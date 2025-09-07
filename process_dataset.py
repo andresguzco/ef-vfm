@@ -1,9 +1,12 @@
 import numpy as np
 import pandas as pd
 import os
+import sys
 import json
 import argparse
 
+from sklearn.preprocessing import OrdinalEncoder
+from sklearn import model_selection
 
 TYPE_TRANSFORM ={
     'float', np.float32,
@@ -44,7 +47,6 @@ def preprocess_beijing_dcr():
     columns = data_df.columns
 
     data_df = data_df[columns[1:]]
-
 
     df_cleaned = data_df.dropna()
     df_cleaned.to_csv(info['data_path'], index = False)
@@ -129,13 +131,13 @@ def preprocess_news_dcr(remove_cat=False):
     info['data_path'] = data_save_path
     
     with open(f'{INFO_PATH}/{name}.json', 'w') as file:
-        json.dump(info, file, indent=4)    
+        json.dump(info, file, indent=4)   
+
 
 def get_column_name_mapping(data_df, num_col_idx, cat_col_idx, target_col_idx, column_names = None):
     
     if not column_names:
         column_names = np.array(data_df.columns.tolist())
-    
 
     idx_mapping = {}
 
@@ -155,7 +157,6 @@ def get_column_name_mapping(data_df, num_col_idx, cat_col_idx, target_col_idx, c
             idx_mapping[int(idx)] = curr_target_idx
             curr_target_idx += 1
 
-
     inverse_idx_mapping = {}
     for k, v in idx_mapping.items():
         inverse_idx_mapping[int(v)] = k
@@ -172,7 +173,6 @@ def train_val_test_split(data_df, cat_columns, num_train = 0, num_test = 0):
     total_num = data_df.shape[0]
     idx = np.arange(total_num)
 
-
     seed = 1234
 
     while True:
@@ -182,11 +182,8 @@ def train_val_test_split(data_df, cat_columns, num_train = 0, num_test = 0):
         train_idx = idx[:num_train]
         test_idx = idx[-num_test:]
 
-
         train_df = data_df.loc[train_idx]
         test_df = data_df.loc[test_idx]
-
-
 
         flag = 0
         for i in cat_columns:
@@ -214,7 +211,7 @@ def process_data(name):
         preprocess_beijing()
     elif name == 'beijing_dcr':
         preprocess_beijing_dcr()
-    
+
     with open(f'{INFO_PATH}/{name}.json', 'r') as f:
         info = json.load(f)
 
@@ -267,7 +264,7 @@ def process_data(name):
             
         train_df = data_df
         
-        if "dcr" in name:   # create 50/50 splits for dcr datasets
+        if "dcr" in name and "diabetes" not in name:   # create 50/50 splits for dcr datasets; no need for this for diabetes dataset as it's done in preprocessing
             complete_df = pd.concat([train_df, test_df, val_df], axis = 0, ignore_index=True)
             num_data = complete_df.shape[0]
             num_train = int(num_data*0.5)
@@ -349,10 +346,10 @@ def process_data(name):
     for col in cat_columns:
         train_df.loc[train_df[col] == '?', col] = 'nan'
     for col in num_columns:
-        if (train_df[col] == ' ?').sum() > 0:
+        if (test_df[col] == ' ?').sum() > 0:
             print(col)
             import pdb; pdb.set_trace()
-        if (train_df[col] == '?').sum() > 0:
+        if (test_df[col] == '?').sum() > 0:
             print(col)
             import pdb; pdb.set_trace()
         test_df.loc[test_df[col] == '?', col] = np.nan
@@ -366,13 +363,10 @@ def process_data(name):
     if train_df.isna().any().any():
         print("Training data contains nan in the numerical cols")
         import pdb; pdb.set_trace()
-
-
     
     X_num_train = train_df[num_columns].to_numpy().astype(np.float32)
     X_cat_train = train_df[cat_columns].to_numpy()
     y_train = train_df[target_columns].to_numpy()
-
 
     X_num_test = test_df[num_columns].to_numpy().astype(np.float32)
     X_cat_test = test_df[cat_columns].to_numpy()
@@ -399,7 +393,6 @@ def process_data(name):
     train_df[num_columns] = train_df[num_columns].astype(np.float32)
     test_df[num_columns] = test_df[num_columns].astype(np.float32)
     val_df[num_columns] = val_df[num_columns].astype(np.float32)
-
 
     train_df.to_csv(f'{save_dir}/train.csv', index = False)
     test_df.to_csv(f'{save_dir}/test.csv', index = False)
@@ -442,7 +435,6 @@ def process_data(name):
         metadata['columns'][i] = {}
         metadata['columns'][i]['sdtype'] = 'categorical'
 
-
     if task_type == 'regression':
         
         for i in target_col_idx:
@@ -477,21 +469,24 @@ def process_data(name):
     print('Int', len(info['int_col_idx']))
     print('Cat', cat)
 
-
 if __name__ == "__main__":
 
     if args.dataname:
         process_data(args.dataname)
     else:
         for name in [
-                'adult', 'default', 'shoppers', 'magic', 'beijing', 'news', 'news_nocat',
-                'adult_dcr',
-                'default_dcr',
-                'shoppers_dcr',
-                'beijing_dcr',
-                'news_dcr', 
-            ]:    
-            process_data(name)
-
-        
+            'adult', 
+            'default', 
+            'shoppers', 
+            'magic', 
+            'beijing', 
+            'news', 
+            'news_nocat',
+            'adult_dcr',
+            'default_dcr',
+            'shoppers_dcr',
+            'beijing_dcr',
+            'news_dcr', 
+        ]:    
+        process_data(name)
 
