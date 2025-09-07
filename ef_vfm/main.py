@@ -151,7 +151,7 @@ def main(args):
     
     ## Load the module and models
     raw_config['unimodmlp_params']['d_numerical'] = d_numerical
-    raw_config['unimodmlp_params']['categories'] = (categories+1).tolist()  # add one for the mask category
+    raw_config['unimodmlp_params']['categories'] = (categories).tolist() 
     model = UniModMLP(**raw_config['unimodmlp_params'])
     model.to(device)
     

@@ -21,9 +21,7 @@ class ExpVFM(torch.nn.Module):
         self.num_classes_expanded = torch.from_numpy(
             np.concatenate([num_classes[i].repeat(num_classes[i]) for i in range(len(num_classes))])
         ).to(device) if len(num_classes)>0 else torch.tensor([]).to(device).int()
-        self.mask_index = torch.tensor(self.num_classes).long().to(device)
         self.neg_infinity = -1000000.0 
-        self.num_classes_w_mask = tuple(self.num_classes + 1)
 
         offsets = np.cumsum(self.num_classes)
         offsets = np.append([0], offsets)
@@ -34,9 +32,6 @@ class ExpVFM(torch.nn.Module):
         
         offsets = np.cumsum(self.num_classes) + np.arange(1, len(self.num_classes)+1)
         offsets = np.append([0], offsets)
-        self.slices_for_classes_with_mask = []
-        for i in range(1, len(offsets)):
-            self.slices_for_classes_with_mask.append(np.arange(offsets[i - 1], offsets[i]))
 
         self._vf_fn = vf_fn
         self.device = device
