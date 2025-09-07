@@ -488,5 +488,5 @@ if __name__ == "__main__":
             'beijing_dcr',
             'news_dcr', 
         ]:    
-        process_data(name)
+            process_data(name)
 
