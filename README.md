@@ -57,41 +57,13 @@ Process datasets:
 
 ```python process_dataset.py```
 
-### Using your own dataset
-
-First, create a directory for your dataset in [./data](./data):
-
-```cd data
-mkdir <NAME_OF_YOUR_DATASET>
-```
-
-Compile your raw tabular data in .csv format. **The first row should be the header** indicating the name of each column, and the remaining rows are records. After finishing these steps, place you data's csv file in the directory you just created and name it as <NAME_OF_YOUR_DATASET>.csv. 
-
-Then, create <NAME_OF_YOUR_DATASET>.json in [./data/Info](./data/Info). Write this file with the metadata of your dataset, covering the following information:
-
-```{
-    "name": "<NAME_OF_YOUR_DATASET>",
-    "task_type": "[NAME_OF_TASK]", # binclass or regression
-    "header": "infer",
-    "column_names": null,
-    "num_col_idx": [LIST],  # list of indices of numerical columns
-    "cat_col_idx": [LIST],  # list of indices of categorical columns
-    "target_col_idx": [list], # list of indices of the target columns (for MLE)
-    "file_type": "csv",
-    "data_path": "data/<NAME_OF_YOUR_DATASET>/<NAME_OF_YOUR_DATASET>.csv"
-    "test_path": null,
-}
-```
-
-Finally, run the following command to process your dataset:
-
-```python process_dataset.py --dataname <NAME_OF_YOUR_DATASET>```
-
 ## Training TabbyFlow
 
 To train an unconditional EF-VFM model across the entire table, run
 
-```python main.py --dataname <NAME_OF_DATASET> --mode train```
+```python main.py --dataname <NAME_OF_DATASET> --mode train --exp_name <EXP_NAME>```
+
+where ```<NAME_OF_DATASET>``` is the name of the dataset you want to train on, and ```<EXP_NAME>``` is the name of your experiment.
 
 Current Options of ```<NAME_OF_DATASET>``` are: adult, default, shoppers, magic, beijing, news
 
@@ -103,7 +75,9 @@ You must specify the experiment name, which will be used for logging and saving 
 
 To sample synthetic tables from trained EF-VFM models and evaluate them, run
 
-```python main.py --dataname <NAME_OF_DATASET> --mode test --report --no_wandb```
+```python main.py --dataname <NAME_OF_DATASET> --mode test --report --no_wandb --exp_name <EXP_NAME>```
+
+where ```<NAME_OF_DATASET>``` and ```<EXP_NAME>``` should be the same as those used in training.
 
 This will sample 20 synthetic tables randomly. Meanwhile, it will evaluate the density, mle, and c2st scores for each sample and report their average and standard deviation. The results will be printed out in the terminal, and the samples and detailed evaluation results will be placed in ./eval/report_runs/<EXP_NAME>/<NAME_OF_DATASET>/.
 
@@ -131,7 +105,7 @@ Then, test the models on DCR with the same `_dcr` suffix
 
 ## License
 
-This work is licensed undeer the MIT License.
+This work is licensed under the MIT License.
 
 ## Acknowledgement
 
@@ -151,4 +125,4 @@ url={https://openreview.net/forum?id=kjtvCSkSsy}
 
 ## Contact
 
-If you encounter any problem or you have any question regarding the paper, please contact [Andrés](andresguzco@gmail.com) or [Floor](f.eijkelboom@uva.nl).
+If you encounter any problem or you have any question regarding the paper, please contact [Andrés](andresguzco@gmail.com).
