@@ -22,17 +22,19 @@ def print_with_bar(log_msg):
 
 class Trainer:
     def __init__(
-            self, flow, train_iter, dataset, test_dataset,  metrics, logger, 
+            self, flow, train_iter, dataset, test_dataset,  metrics, logger,
             lr, weight_decay,
             steps, batch_size, check_val_every,
             sample_batch_size, model_save_path, result_save_path,
             num_samples_to_generate=None,
             lr_scheduler='reduce_lr_on_plateau',
-            reduce_lr_patience=100, factor=0.9, 
+            reduce_lr_patience=100, factor=0.9,
             ema_decay=0.997,
             closs_weight_schedule = "fixed",
             c_lambda = 1.0,
             d_lambda = 1.0,
+            max_grad_norm = 1.0,
+            warmup_epochs = 0,
             device=torch.device('cuda:1'),
             ckpt_path = None,
             **kwargs
@@ -54,6 +56,8 @@ class Trainer:
         self.closs_weight_schedule = closs_weight_schedule
         self.c_lambda = c_lambda
         self.d_lambda = d_lambda
+        self.max_grad_norm = max_grad_norm
+        self.warmup_epochs = warmup_epochs
 
         self.batch_size = batch_size
         self.sample_batch_size = sample_batch_size
@@ -61,7 +65,7 @@ class Trainer:
         self.metrics = metrics
         self.logger = logger
         self.check_val_every = check_val_every
-        
+
         self.device = device
         self.model_save_path = model_save_path
         self.result_save_path = result_save_path
@@ -69,8 +73,8 @@ class Trainer:
         if self.ckpt_path is not None:
             state_dicts = torch.load(self.ckpt_path, map_location=self.device)
             self.flow._vf_fn.load_state_dict(state_dicts['vf_fn'])
-            print(f"Weights are loaded from {self.ckpt_path}")     
-        
+            print(f"Weights are loaded from {self.ckpt_path}")
+
         self.curr_epoch = int(os.path.basename(self.ckpt_path).split('_')[-1].split('.')[0]) if self.ckpt_path is not None else 0
 
     def _anneal_lr(self, step):
@@ -90,6 +94,8 @@ class Trainer:
 
         loss = dloss_weight * dloss + closs_weight * closs
         loss.backward()
+        if self.max_grad_norm > 0:
+            torch.nn.utils.clip_grad_norm_(self.flow.parameters(), self.max_grad_norm)
         self.optimizer.step()
 
         return dloss, closs
@@ -180,10 +186,14 @@ class Trainer:
             }
             log_dict.update(loss_dict)
             
-            # Adjust learning rate
-            if self.lr_scheduler == 'reduce_lr_on_plateau':
+            # Adjust learning rate (warmup overrides during early epochs)
+            if self.warmup_epochs > 0 and (epoch + 1) <= self.warmup_epochs:
+                warmup_lr = self.init_lr * (epoch + 1) / self.warmup_epochs
+                for param_group in self.optimizer.param_groups:
+                    param_group["lr"] = warmup_lr
+            elif self.lr_scheduler == 'reduce_lr_on_plateau':
                 self.scheduler.step(total_loss)
-            elif  self.lr_scheduler == 'anneal':
+            elif self.lr_scheduler == 'anneal':
                 self._anneal_lr(epoch)
             elif self.lr_scheduler == 'fixed':
                 pass

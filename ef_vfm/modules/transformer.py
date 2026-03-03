@@ -14,12 +14,16 @@ class Tokenizer(nn.Module):
             d_bias = d_numerical
             self.category_offsets = None
             self.category_embeddings = None
+            self.n_categories = 0
         else:
             d_bias = d_numerical + len(categories)
             category_offsets = torch.tensor([0] + list(categories[:-1])).cumsum(0)
+            category_ends = torch.tensor(list(categories)).cumsum(0)
             self.register_buffer('category_offsets', category_offsets)
+            self.register_buffer('category_ends', category_ends)
             self.cat_weight = nn.Parameter(Tensor(sum(categories), d_token))
             nn.init.kaiming_uniform_(self.cat_weight, a=math.sqrt(5))
+            self.n_categories = len(categories)
 
         # take [CLS] token into account
         self.weight = nn.Parameter(Tensor(d_numerical + 1, d_token))
@@ -43,16 +47,19 @@ class Tokenizer(nn.Module):
             + ([] if x_num is None else [x_num]),
             dim=1,
         )
-    
+
         x = self.weight[None] * x_num[:, :, None]
 
-        if x_cat is not None:
-            for start, end in zip(self.category_offsets, torch.cat([self.category_offsets[1:], torch.tensor([x_cat.shape[1]], device=x_cat.device)])):
-                if start < end:
-                    x = torch.cat(
-                        [x, x_cat[:, start:end].unsqueeze(1) @ self.cat_weight[start:end][None]],
-                        dim=1,
-                    )
+        if x_cat is not None and self.n_categories > 0:
+            # Vectorized categorical token computation: one matmul per category
+            cat_tokens = []
+            for start, end in zip(self.category_offsets, self.category_ends):
+                # x_cat[:, start:end] @ cat_weight[start:end] -> [batch, d_token]
+                cat_tokens.append(
+                    (x_cat[:, start:end] @ self.cat_weight[start:end]).unsqueeze(1)
+                )
+            x = torch.cat([x] + cat_tokens, dim=1)
+
         if self.bias is not None:
             bias = torch.cat(
                 [
@@ -176,10 +183,15 @@ class Transformer(nn.Module):
    
             self.layers.append(layer)
 
-        self.activation = nn.ReLU()
-        self.last_activation = nn.ReLU()
-        # self.activation = lib.get_activation_fn(activation)
-        # self.last_activation = lib.get_nonglu_activation_fn(activation)
+        _activations = {
+            'relu': nn.ReLU,
+            'gelu': nn.GELU,
+            'silu': nn.SiLU,
+        }
+        if activation not in _activations:
+            raise ValueError(f"Unknown activation '{activation}'. Choose from: {list(_activations)}")
+        self.activation = _activations[activation]()
+        self.last_activation = _activations[activation]()
         self.prenormalization = prenormalization
         self.last_normalization = make_normalization() if prenormalization else None
         self.ffn_dropout = ffn_dropout

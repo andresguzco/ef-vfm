@@ -10,6 +10,7 @@ factor = 32
 bias = true
 dim_t = 1024
 use_mlp = true
+activation = "gelu"
 
 [train.main]
 steps = 8000
@@ -24,6 +25,8 @@ reduce_lr_patience = 50        # hyperparam for reduce_lr_on_plateau
 closs_weight_schedule = "anneal"
 c_lambda = 1.0
 d_lambda = 1.0
+max_grad_norm = 1.0     # gradient clipping (0 to disable)
+warmup_epochs = 100     # linear LR warmup (0 to disable)
 
 [sample]
 batch_size = 10000

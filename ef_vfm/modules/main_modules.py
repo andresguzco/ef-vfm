@@ -74,17 +74,18 @@ class UniModMLP(nn.Module):
     """
     def __init__(
             self, d_numerical, categories, num_layers, d_token,
-            n_head = 1, factor = 4, bias = True, dim_t=512, use_mlp=True, **kwargs
+            n_head = 1, factor = 4, bias = True, dim_t=512, use_mlp=True,
+            activation='gelu', **kwargs
         ):
         super().__init__()
         self.d_numerical = d_numerical
         self.categories = categories
 
         self.tokenizer = Tokenizer(d_numerical, categories, d_token, bias = bias)
-        self.encoder = Transformer(num_layers, d_token, n_head, d_token, factor)
+        self.encoder = Transformer(num_layers, d_token, n_head, d_token, factor, activation=activation)
         d_in = d_token * (d_numerical + len(categories))
         self.mlp = MLP(d_in, dim_t=dim_t, use_mlp=use_mlp)
-        self.decoder = Transformer(num_layers, d_token, n_head, d_token, factor)
+        self.decoder = Transformer(num_layers, d_token, n_head, d_token, factor, activation=activation)
         self.detokenizer = Reconstructor(d_numerical, categories, d_token)
         
         self.model = nn.ModuleList([self.tokenizer, self.encoder, self.mlp, self.decoder, self.detokenizer])
