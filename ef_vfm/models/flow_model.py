@@ -167,6 +167,27 @@ class Velocity(torch.nn.Module):
         x_cat = x[:, self.model.d_numerical:]
         mu, logits = self.model(x_num, x_cat, t)
 
-        pred = torch.cat([mu, logits], dim=1)
-        v_t = (pred - (1 - 0.01) * x) / (1 - (1 - 0.01) * t.unsqueeze(1))
+        # Numerical velocity
+        if self.model.d_numerical > 0:
+            v_num = (mu - (1 - 0.01) * x_num) / (1 - (1 - 0.01) * t.unsqueeze(1))
+        else:
+            v_num = torch.zeros_like(x_num)
+
+        # Categorical velocity: normalize logits into probability space before computing velocity
+        if len(self.model.categories) > 0:
+            v_cat_parts = []
+            logit_idx = 0
+            oh_idx = 0
+            for k in self.model.categories:
+                probs_k = F.softmax(logits[:, logit_idx:logit_idx + k], dim=-1)
+                x_k = x_cat[:, oh_idx:oh_idx + k]
+                v_k = (probs_k - (1 - 0.01) * x_k) / (1 - (1 - 0.01) * t.unsqueeze(1))
+                v_cat_parts.append(v_k)
+                logit_idx += k
+                oh_idx += k
+            v_cat = torch.cat(v_cat_parts, dim=1)
+        else:
+            v_cat = torch.zeros_like(x_cat)
+
+        v_t = torch.cat([v_num, v_cat], dim=1)
         return v_t
