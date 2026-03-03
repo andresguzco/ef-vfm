@@ -32,6 +32,9 @@ dependencies = [
 # synthcity lives in its own group because it pulls heavy / conflicting deps.
 # Install with:  uv sync --group synthcity
 [dependency-groups]
+dev = [
+    "pytest>=7.0",
+]
 synthcity = [
     "synthcity",
     "category-encoders>=2.6",

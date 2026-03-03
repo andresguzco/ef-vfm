@@ -55,6 +55,7 @@ class ExpVFM(torch.nn.Module):
         
         # Discrete interpolation
         x_cat_oh = self.to_one_hot(x_cat).float()
+        x_cat_t = x_cat_oh
         if x_cat.shape[1] > 0:
             x_cat_t = t * x_cat_oh + (1 - t) * torch.randn_like(x_cat_oh)
 
@@ -133,9 +134,10 @@ class ExpVFM(torch.nn.Module):
         return x_gen
 
     def to_one_hot(self, x_cat):
-        
-        x_cat_oh = torch.cat(   
-            [F.one_hot(x_cat[:, i], num_classes=self.num_classes[i]) for i in range(len(self.num_classes))], 
+        if len(self.num_classes) == 0:
+            return torch.zeros(x_cat.shape[0], 0, device=x_cat.device, dtype=torch.long)
+        x_cat_oh = torch.cat(
+            [F.one_hot(x_cat[:, i], num_classes=self.num_classes[i]) for i in range(len(self.num_classes))],
             dim=-1
         )
         return x_cat_oh

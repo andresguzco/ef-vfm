@@ -52,7 +52,7 @@ class Trainer:
         self.optimizer = torch.optim.AdamW(self.flow.parameters(), lr=lr, weight_decay=weight_decay)
         self.ema_decay = ema_decay
         self.lr_scheduler = lr_scheduler
-        self.scheduler = ReduceLROnPlateau(self.optimizer, mode='min', factor=factor, patience=reduce_lr_patience, verbose=True)
+        self.scheduler = ReduceLROnPlateau(self.optimizer, mode='min', factor=factor, patience=reduce_lr_patience)
         self.closs_weight_schedule = closs_weight_schedule
         self.c_lambda = c_lambda
         self.d_lambda = d_lambda
